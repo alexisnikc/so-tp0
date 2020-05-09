@@ -7,14 +7,26 @@
 
 #include "utils.h"
 
-//TODO
-/*
- * Recibe un paquete a serializar, y un puntero a un int en el que dejar
- * el tamaño del stream de bytes serializados que devuelve
- */
 void* serializar_paquete(t_paquete* paquete, int *bytes)
 {
+	int size_serializado = sizeof(op_code) + sizeof(int) + paquete->buffer->size;
 
+	void * buffer = malloc(size_serializado);
+
+	(*bytes) = size_serializado;
+
+	int bytes_escritos = 0;
+
+	memcpy(buffer + bytes_escritos, &(paquete->codigo_operacion), sizeof(paquete->codigo_operacion));
+	bytes_escritos += sizeof(paquete -> codigo_operacion);
+
+	memcpy(buffer + bytes_escritos, &(paquete->buffer ->size), sizeof(paquete->buffer->size));
+	bytes_escritos += sizeof(paquete->buffer->size);
+
+	memcpy(buffer + bytes_escritos, paquete->buffer->stream, paquete->buffer->size);
+	bytes_escritos += paquete->buffer->size;
+
+	return buffer;
 }
 
 int crear_conexion(char *ip, char* puerto)
@@ -39,16 +51,31 @@ int crear_conexion(char *ip, char* puerto)
 	return socket_cliente;
 }
 
-//TODO
 void enviar_mensaje(char* mensaje, int socket_cliente)
 {
-
+	t_paquete *paquete = malloc(sizeof(paquete));
+	paquete->codigo_operacion = MENSAJE;
+	paquete->buffer = malloc (sizeof(t_buffer));
+	paquete->buffer->stream = mensaje;
+	paquete->buffer->size = strlen(mensaje) + 1;
+	int size_serializado;
+	void *serializado = serializar_paquete(paquete, &size_serializado);
+	send(socket_cliente, serializado, size_serializado, 0);
+	free(serializado);
 }
 
-//TODO
 char* recibir_mensaje(int socket_cliente)
 {
-
+	op_code operacion;
+	recv(socket_cliente, &operacion, sizeof(operacion), 0);
+	int buffer_size;
+	recv(socket_cliente, &buffer_size, sizeof(buffer_size), 0);
+	char *buffer = malloc(buffer_size);
+	recv(socket_cliente, buffer, buffer_size, 0);
+	if(buffer[buffer_size - 1] != '\0'){
+		printf("WARNING - El buffer recibido NO es un string\n");
+	}
+	return buffer;
 }
 
 void liberar_conexion(int socket_cliente)
